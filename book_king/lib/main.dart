@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 
+import 'package:http/http.dart' as http;
+import 'dart:convert' as convert;
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'signIn.dart';
+import 'loginForm.dart';
 
 void main() {
   runApp(MyApp());
@@ -59,9 +63,12 @@ class _BookKingState extends State<BookKing> with TickerProviderStateMixin {
 
   FocusScopeNode currentFocus;
   TextEditingController _searchFieldController ;
+
   TabController _tabController ;
 
   String _tempMsg = "";
+
+
 
   @override
   void initState() {
@@ -69,6 +76,7 @@ class _BookKingState extends State<BookKing> with TickerProviderStateMixin {
     super.initState();
 
     _searchFieldController = TextEditingController();
+
     _tabController = TabController(initialIndex: 0, length: 3, vsync: this);
     _tabController.addListener( () => currentFocus.unfocus() );
 
@@ -193,122 +201,203 @@ class _BookKingState extends State<BookKing> with TickerProviderStateMixin {
 
 
   void _showUserPageLogged() {
-  Navigator.of(context).push(
-  MaterialPageRoute(builder: (BuildContext context) {
-
-  return Scaffold(
-  appBar: AppBar(title: Text('User Page')),
-  body: Center(
-  child: Column(
-  mainAxisSize: MainAxisSize.min,
-  children: [
-  Column(
-  children: [
-  Image.network(_loggedUser.photoURL),
-  Padding( padding: const EdgeInsets.only(top: 10.0) ),
-  Text(_loggedUser.displayName),
-  Padding( padding: const EdgeInsets.only(top: 5.0) ),
-  Text(_loggedUser.email),
-  Padding( padding: const EdgeInsets.only(top: 5.0) ),
-  Text(_loggedUser.phoneNumber != null ? _loggedUser.phoneNumber : "")
-  ]
-  ),
-  const SizedBox(height: 12),
-  OutlineButton(
-  splashColor: Colors.grey,
-  onPressed: () {
-  signOutGoogle().then((result) {
-  setState((){
-  _isLogged = false;
-  _loggedUser = null;
-  });
-  Navigator.pop(context);
-  });
-  },
-  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40)),
-  highlightElevation: 0,
-  borderSide: BorderSide(color: Colors.grey),
-  child: Padding(
-  padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
-  child: Row(
-  mainAxisSize: MainAxisSize.min,
-  mainAxisAlignment: MainAxisAlignment.center,
-  children: [
-  Text(
-  'Logout',
-  style: TextStyle(
-  fontSize: 20,
-  color: Colors.grey,
-  )
-  )]
-  )
-  )
-  )]
-  )
-  )
-  );
-  })
-  );
+    Navigator.of(context).push(
+        MaterialPageRoute(builder: (BuildContext context) {
+          return Scaffold(
+              appBar: AppBar(title: Text('User Page')),
+              body: Center(
+                  child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Column(
+                            children: [
+                              Image.network(_loggedUser.photoURL),
+                              Padding( padding: const EdgeInsets.only(top: 10.0) ),
+                              Text(_loggedUser.displayName),
+                              Padding( padding: const EdgeInsets.only(top: 5.0) ),
+                              Text(_loggedUser.email),
+                              Padding( padding: const EdgeInsets.only(top: 5.0) ),
+                              Text(_loggedUser.phoneNumber != null ? _loggedUser.phoneNumber : "")
+                            ]
+                        ),
+                        const SizedBox(height: 12),
+                        OutlineButton(
+                            splashColor: Colors.grey,
+                            onPressed: () {
+                              signOutGoogle().then((result) {
+                                setState((){
+                                  _isLogged = false;
+                                  _loggedUser = null;
+                                });
+                                Navigator.pop(context);
+                              });
+                              },
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40)),
+                            highlightElevation: 0,
+                            borderSide: BorderSide(color: Colors.grey),
+                            child: Padding(
+                                padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
+                                child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                          'Logout',
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            color: Colors.grey,
+                                          )
+                                      )]
+                                )
+                            )
+                        )]
+                  )
+              )
+          );
+        })
+    );
   }
 
   void _showUserPageNotLogged() {
-  Navigator.of(context).push(
-  MaterialPageRoute(builder: (BuildContext context) {
-  return Scaffold(
-  appBar: AppBar(title: Text('User Page')),
-  body: Center(
-  child: Column(
-  mainAxisSize: MainAxisSize.min,
-  children: [
-  Padding(
-  padding: const EdgeInsets.fromLTRB(0, 100, 0, 10),
-  ),
-  OutlineButton(
-  splashColor: Colors.grey,
-  onPressed: () {
-  signInGoogle().then((result){
-  if (result != null){
-  setState((){
-  _isLogged = true;
-  _loggedUser = result;
-  });
-  Navigator.pop(context);
-  }
-  });
-  },
-  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40)),
-  highlightElevation: 0,
-  borderSide: BorderSide(color: Colors.grey),
-  child: Padding(
-  padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
-  child: Row(
-  mainAxisSize: MainAxisSize.min,
-  mainAxisAlignment: MainAxisAlignment.center,
-  children: <Widget>[
-  Image(image: AssetImage("assets/google_logo.png"), height: 35.0),
-  Padding(
-  padding: const EdgeInsets.only(left: 10),
-  child: Text(
-  'Sign in with Google',
-  style: TextStyle(
-  fontSize: 20,
-  color: Colors.grey,
-  )
-  )
-  )
-  ])
-  )
-  )]
-  )
-  )
-  );
-  })
-  );
+    Navigator.of(context).push(
+        MaterialPageRoute(builder: (BuildContext context) {
+          return Scaffold(
+              appBar: AppBar(title: Text('User Page')),
+              body: Center(
+                  child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        MyForm(),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                              OutlineButton(
+                                  splashColor: Colors.grey,
+                                  onPressed: () => doLogin(),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40)),
+                                  highlightElevation: 0,
+                                  borderSide: BorderSide(color: Colors.grey),
+                                  child: Padding(
+                                      padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
+                                      child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: <Widget>[
+                                            Text(
+                                                'Log in',
+                                                style: TextStyle(
+                                                  fontSize: 20,
+                                                  color: Colors.grey,
+                                                )
+                                            ),
+                                          ]
+                                      )
+                                  )
+                              ),
+                              Padding( padding: EdgeInsets.symmetric(horizontal: 20.0) ),
+                              OutlineButton(
+                                  splashColor: Colors.grey,
+                                  onPressed: null,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40)),
+                                  highlightElevation: 0,
+                                  borderSide: BorderSide(color: Colors.grey),
+                                  child: Padding(
+                                      padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
+                                      child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: <Widget>[
+                                            Text(
+                                                'Register',
+                                                style: TextStyle(
+                                                  fontSize: 20,
+                                                  color: Colors.grey,
+                                                )
+                                            ),
+                                          ]
+                                      )
+                                  )
+                              )
+                          ]
+                        ),
+                        Padding( padding: EdgeInsets.symmetric(vertical: 20.0) ),
+                        Divider(
+                          color: Colors.blue,
+                          height: 20,
+                          thickness: 4,
+                          indent: 20,
+                          endIndent: 20,
+                        ),
+                        Padding( padding: EdgeInsets.symmetric(vertical: 20.0) ),
+                        OutlineButton(
+                            splashColor: Colors.grey,
+                            onPressed: () {
+                              signInGoogle().then((result){
+                                if (result != null){
+                                  setState((){
+                                    _isLogged = true;
+                                    _loggedUser = result;
+                                  });
+                                  Navigator.pop(context);
+                                }
+                              });
+                              },
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40)),
+                            highlightElevation: 0,
+                            borderSide: BorderSide(color: Colors.grey),
+                            child: Padding(
+                                padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
+                                child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: <Widget>[
+                                      Image(image: AssetImage("assets/google_logo.png"), height: 35.0),
+                                      Padding(
+                                          padding: const EdgeInsets.only(left: 10),
+                                          child: Text(
+                                              'Sign in with Google',
+                                              style: TextStyle(
+                                                fontSize: 20,
+                                                color: Colors.grey,
+                                              )
+                                          )
+                                      )
+                                    ]
+                                )
+                            )
+                        )]
+                  )
+              )
+          );
+        })
+    );
   }
 
   void _findBook(){
 
   }
+
+  Future<void> doLogin() async {
+    var url = "http://bookking.pythonanywhere.com/token";
+
+    var headers = <String, String>{
+      'email' : "testuser@test.com",
+      'password' : "password"
+    };
+
+    final response = await http.get(url, headers: headers);
+
+    if (response.statusCode == 200) {
+      var jsonResponse = convert.jsonDecode(response.body);
+      var token = jsonResponse['token'];
+      print('Here there is your token: $token.');
+    } else {
+      print('Request failed with status: ${response.statusCode}.');
+    }
+
+  }
+
 
 }
 
