@@ -7,13 +7,16 @@ from firebase_admin import credentials, auth
 from firebase_admin import firestore
 from functools import wraps
 from math import sin, cos, sqrt, atan2, radians
-
+import os
 
 # Use a service account
-cred = credentials.Certificate('credential.json')
+my_dir = os.path.dirname(__file__)
+cred_path = os.path.join(my_dir, 'credential.json')
+gservice_path = json_file_path = os.path.join(my_dir, 'google-services.json')
+cred = credentials.Certificate(cred_path)
 firebase_admin.initialize_app(cred)
 db = firestore.client()
-pb = pyrebase.initialize_app(json.load(open('google-services.json')))
+pb = pyrebase.initialize_app(json.load(open(gservice_path)))
 
 app = Flask(__name__)
 
@@ -52,8 +55,8 @@ def check_token(f):
 
 @app.route('/token')
 def token():
-    email = request.form.get('email')
-    password = request.form.get('password')
+    email = request.args.get('email')
+    password = request.args.get('password')
     try:
         user = pb.auth().sign_in_with_email_and_password(email, password)
         jwt = user['idToken']
@@ -63,9 +66,11 @@ def token():
 
 
 
-@app.route('home')
+@app.route('/')
 def home():
-	return 'Hello from bookking!\n/signup\n/books\n/books/create\n/books/delete'
+	return '<h2>Hello from bookking!</h2><p>/signup</p><p>/books GET</p><p>/books/create POST</p><p>/books/delete POST</p>'
+
+
 @app.route('/signup')
 def signup():
     email = request.form.get('email')
@@ -103,15 +108,15 @@ def books():
 		if book['title'].startswith(title) and book['author'].startswith(author) and book['genere'].startswith(genere):
 			result.append(book)
 
-		if lat is not '' and lon is not '':
+		if lat != '' and lon != '':
 			book['distance'] = distance(lat, book['lat'], lon, book['long'])
-			result = sorted(result, key=lambda k: k['distance']) 
+			result = sorted(result, key=lambda k: k['distance'])
 		else:
 			book['distance'] = 9999999
 
 	return str(result)
 
-		
+
 @app.route('/books/create', methods=['POST'])
 @check_token
 def newbook():
@@ -144,21 +149,44 @@ def newbook():
 	return '200'
 
 
-
-@app.route('/books/delete', methods=['POST'])
+@app.route('/mybooks', methods=['GET'])
 @check_token
-def delbook():
+def mybooks():
 
 	decoded_token = auth.verify_id_token(request.headers.get('authorization'))
 	uid = decoded_token['uid']
 
-	bookid = request.form['bookid']
-	book = db.collection(u'books').document(bookid).delete()
+	books = db.collection(u'books').stream()
+
+	result = []
+	for b in books:
+		b = b.to_dict()
+		if b['userid'] == uid:
+			result.append(b)
+
+	return result
+
+
+
+@app.route('/transactions/propose')
+@check_token
+def propose():
+
+	decoded_token = auth.verify_id_token(request.headers.get('authorization'))
+	uid = decoded_token['uid']
+
+	bookproposer = request.args.get('bookproposer', default = '', type = str)
+	bookreciver = request.args.get('bookreciver', default = '', type = str)
+
+	uidreciver = db.collection('books').document(bookreciver).to_dict()['uid']
+
+	transaction = db.collection('transaction').document()
+	transaction.set({
+		'bookproposer' : bookproposer,
+		'bookreciver' : bookreciver,
+		'uidproposer' : uid,
+		'uidreciver' : uidreciver,
+		'state' : 'pending',
+		})
 
 	return '200'
-
-
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
