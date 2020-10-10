@@ -7,7 +7,7 @@ from firebase_admin import credentials, auth
 from firebase_admin import firestore
 from functools import wraps
 from math import sin, cos, sqrt, atan2, radians
-import os
+import os, requests
 
 # Use a service account
 my_dir = os.path.dirname(__file__)
@@ -71,7 +71,7 @@ def home():
 	return '<h2>Hello from bookking!</h2><p>/signup</p><p>/books GET</p><p>/books/create POST</p><p>/books/delete POST</p>'
 
 
-@app.route('/signup')
+@app.route('/signup', methods=['POST'])
 def signup():
     email = request.form.get('email')
     password = request.form.get('password')
@@ -105,14 +105,16 @@ def books():
 		book = b.to_dict()
 		book['id'] = b.id
 
+		if lat != '' and lon != '':
+			book['distance'] = distance(lat, book['lat'], lon, book['long'])
+		else:
+			book['distance'] = 9999999
+
 		if book['title'].startswith(title) and book['author'].startswith(author) and book['genere'].startswith(genere):
 			result.append(book)
 
-		if lat != '' and lon != '':
-			book['distance'] = distance(lat, book['lat'], lon, book['long'])
-			result = sorted(result, key=lambda k: k['distance'])
-		else:
-			book['distance'] = 9999999
+	if lat != '' and lon != '':
+	    result = sorted(result, key=lambda k: k['distance'])
 
 	return str(result)
 
@@ -148,6 +150,48 @@ def newbook():
 
 	return '200'
 
+@app.route('/books/ISBNcreate', methods=['POST'])
+@check_token
+def ISBNnewbook():
+
+	decoded_token = auth.verify_id_token(request.headers.get('authorization'))
+	uid = decoded_token['uid']
+	url = 'https://www.googleapis.com/books/v1/volumes?q=isbn:'
+
+	data = request.form
+	lat = data['lat']
+	lon = data['lon']
+	ISBN = data['ISBN']
+
+	r = requests.get(url+ISBN)
+	response = json.loads(r.text)
+	if response['totalItems'] > 0:
+		book = response['items'][0]['volumeInfo']
+
+		title = book['title']
+		author = book['authors'][0]
+		year = book['publishedDate']
+		genere = book['categories'][0]
+
+		book = db.collection(u'books').document()
+		book.set({
+			u'title' : title,
+			u'author' : author,
+			u'year' : year,
+			u'genere' : genere,
+			u'ISBN': ISBN,
+			u'lat' : lat,
+			u'lon' : lon,
+			u'userid' : uid
+			})
+
+		return '200'
+
+	else:
+		return 'Book not found'
+
+
+
 
 @app.route('/mybooks', methods=['GET'])
 @check_token
@@ -164,29 +208,66 @@ def mybooks():
 		if b['userid'] == uid:
 			result.append(b)
 
-	return result
+	return str(result)
+
+@app.route('/transactions', methods = ['GET'])
+@check_token
+def transactions():
+
+	decoded_token = auth.verify_id_token(request.headers.get('authorization'))
+	uid = decoded_token['uid']
+
+	transactions = db.collection(u'transactions').stream()
+	result = []
+	for tr in transactions:
+		t = tr.to_dict()
+		if uid == t['uidreciever'] or uid == t['uidproposer']:
+			result.append(t)
+
+	return str(result)
 
 
 
-@app.route('/transactions/propose')
+
+@app.route('/transactions/propose', methods = ['POST'])
 @check_token
 def propose():
 
 	decoded_token = auth.verify_id_token(request.headers.get('authorization'))
 	uid = decoded_token['uid']
 
-	bookproposer = request.args.get('bookproposer', default = '', type = str)
-	bookreciver = request.args.get('bookreciver', default = '', type = str)
+	data = request.form
+	bookproposer = data['bookproposer']
+	bookreciever = data['bookreciever']
 
-	uidreciver = db.collection('books').document(bookreciver).to_dict()['uid']
 
-	transaction = db.collection('transaction').document()
+	uidreciever = db.collection('books').document(bookreciever).get().to_dict()['userid']
+
+	transaction = db.collection('transactions').document()
 	transaction.set({
 		'bookproposer' : bookproposer,
-		'bookreciver' : bookreciver,
+		'bookreciver' : bookreciever,
 		'uidproposer' : uid,
-		'uidreciver' : uidreciver,
+		'uidreciever' : uidreciever,
 		'state' : 'pending',
 		})
 
 	return '200'
+
+@app.route('/transactions/accept', methods = ['POST'])
+@check_token
+def accept():
+
+	decoded_token = auth.verify_id_token(request.headers.get('authorization'))
+	uid = decoded_token['uid']
+
+	data = request.form
+	transactionid = data['transactionid']
+
+	db.collection(u'transactions').document(transactionid).update({u'state': 'accpted'})
+	return '200'
+
+
+
+if __name__ == "__main__":
+    app.run()
