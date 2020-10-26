@@ -14,6 +14,7 @@ import 'LoginForm.dart';
 import 'AddBookForm.dart';
 
 import 'Book.dart';
+import 'Transaction.dart';
 
 void main() {
   runApp(MyApp());
@@ -78,14 +79,16 @@ class _BookKingState extends State<BookKing> with TickerProviderStateMixin {
   Widget transactionContent;
 
   List<Book> _books = new List<Book>();
+  List<Book> _myBooks = new List<Book>();
 
-  String currentBook = "a";
+  Book currentBook;
 
   @override
   void initState() {
     initializeFlutterFire();
     super.initState();
 
+    /*
     getBooks().then((result) {
         List<Book> retList = getBookFromString(result);
         retList.forEach((book) {
@@ -93,6 +96,14 @@ class _BookKingState extends State<BookKing> with TickerProviderStateMixin {
         });
         exploreContent = updateTabContent(retList);
     });
+
+    getMyBooks().then((result) {
+      List<Book> retList = getBookFromString(result);
+      retList.forEach((book) {
+        _myBooks.add(book);
+      });
+    });
+     */
 
     exploreContent = Text("Search books here.");
     myBooksContent = Text("Here there are your books.");
@@ -135,8 +146,8 @@ class _BookKingState extends State<BookKing> with TickerProviderStateMixin {
           else{
             getTransactions().then((result) {
               setState((){
-                List<Book> retList = getBookFromString(result);
-                transactionContent = updateTabContent(retList);
+                List<Transaction> retList = getTransactionFromString(result);
+                transactionContent = updateTransactionTabContent(retList);
               });
             });
           }
@@ -307,8 +318,15 @@ class _BookKingState extends State<BookKing> with TickerProviderStateMixin {
                                 else {
                                   createBook(author, title, year, genre, isbn)
                                       .then((result) {
-                                    notifyDialog("Done!",
-                                        "Your book has been added succesfully!");
+                                        if (result == "200"){
+                                          notifyDialog("Done!",
+                                              "Your book has been added succesfully!");
+                                        }
+                                        else{
+                                          notifyDialog("Error!",
+                                              "An error occurred!");
+                                        }
+
                                   });
                                 }
                               },
@@ -440,18 +458,24 @@ class _BookKingState extends State<BookKing> with TickerProviderStateMixin {
                                   onPressed: () {
                                     var email = loginFormState.getFormEmail();
                                     var password = loginFormState.getFormPassword();
-                                    setState((){
-                                      _loggedUser = BookKingUser();
-                                      _loggedUser.isLogged = true;
-                                      _loggedUser.setEmail(email);
-                                      _loggedUser.setName(email);
-                                      _loggedUser.setPhotoUrl("https://cdn4.iconfinder.com/data/icons/small-n-flat/24/user-alt-512.png");
-                                      _loggedUser.setPhone("");
                                       doLogin(email, password).then((token){
-                                        _loggedUser.setToken(token);
+                                        if (token != "ERROR") {
+                                          setState((){
+                                            _loggedUser = BookKingUser();
+                                            _loggedUser.setToken(token);
+                                            _loggedUser.isLogged = true;
+                                            _loggedUser.setEmail(email);
+                                            _loggedUser.setName(email);
+                                            _loggedUser.setPhotoUrl("https://cdn4.iconfinder.com/data/icons/small-n-flat/24/user-alt-512.png");
+                                            _loggedUser.setPhone("");
+                                          });
+                                          Navigator.pop(context);
+                                        }
+                                        else {
+                                          notifyDialog("Error", "Email or Password are wrong!");
+                                        }
                                       });
-                                    });
-                                    Navigator.pop(context);
+
                                   },
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40)),
                                   highlightElevation: 0,
@@ -476,7 +500,17 @@ class _BookKingState extends State<BookKing> with TickerProviderStateMixin {
                               Padding( padding: EdgeInsets.symmetric(horizontal: 20.0) ),
                               OutlineButton(
                                   splashColor: Colors.grey,
-                                  onPressed: null,
+                                  onPressed: () {
+                                    var email = loginFormState.getFormEmail();
+                                    var password = loginFormState.getFormPassword();
+                                    setState((){
+                                      doSignUp(email, password).then((code){
+                                        if (code != "200") {
+                                          notifyDialog("Error", "Something went wrong!");
+                                        }
+                                      });
+                                    });
+                                  },
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40)),
                                   highlightElevation: 0,
                                   borderSide: BorderSide(color: Colors.grey),
@@ -581,70 +615,506 @@ class _BookKingState extends State<BookKing> with TickerProviderStateMixin {
   }
 
   proposeExchangeDialog(Book target){
+    List<DropdownMenuItem<Book>> dropdownItems = new List();
 
-    List<DropdownMenuItem<String>> dropdownItems = new List();
+    getMyBooks().then((result) {
+      List<Book> myBookList = getBookFromString(result);
+      Book currentBook = myBookList[0];
 
-    for (String c in ['a', 'b', 'c', 'd', 'e']) {
-      dropdownItems.add(
-          new DropdownMenuItem(
-            value: c,
-            child: new Text(c)
-          )
+      for (Book book in myBookList) {
+        dropdownItems.add(
+            new DropdownMenuItem(
+                value: book,
+                child: Text(book.title)
+            )
+        );
+      }
+
+      return showDialog(
+          context: context,
+          builder: (BuildContext context){
+            return StatefulBuilder(
+              builder: (context, setState) {
+                return AlertDialog(
+                  title: Text("Propose Exchange"),
+                  content: Container(
+                    child: new Center(
+                        child: new Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: <Widget>[
+                            Text("You are proposing an exchange for:"),
+                            Text(target.title),
+                            Text("Select one book you want to exchange:"),
+                            DropdownButton(
+                                value: currentBook,
+                                items: dropdownItems,
+                                onChanged: (selected){
+                                  setState((){
+                                    currentBook = selected;
+                                  });
+                                }
+                            ),
+                          ],
+                        )
+                    ),
+                  ),
+                  actions:[
+                    FlatButton(
+                      child: Text("Propose"),
+                      onPressed: (){
+                        proposeBook(target, currentBook).then((result){
+                          if (result == "200"){
+                            notifyDialog("Done!",
+                                "Succesfully!");
+                          }
+                          else{
+                            notifyDialog("Error!",
+                                "An error occurred!");
+                          }
+                        });
+
+                      },
+                    ),
+                    FlatButton(
+                      child: Text("Cancel"),
+                      onPressed: (){
+                        Navigator.of(context).pop();
+                      },
+                    )
+                  ],
+                );
+              },
+            );
+          }
       );
-    }
 
+    });
+
+  }
+
+  viewBookDialog(Book book){
+    return showDialog(
+        context: context,
+        builder: (BuildContext context){
+          return AlertDialog(
+            title: Text("Book Description"),
+            content: Container(
+              child: new Center(
+                  child: new Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Row(
+                        children: [
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text("ID")
+                                  ]
+                              )
+                          ),
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text(book.id)
+                                  ]
+                              )
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text("Author")
+                                  ]
+                              )
+                          ),
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text(book.author)
+                                  ]
+                              )
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text("Title")
+                                  ]
+                              )
+                          ),
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text(book.title)
+                                  ]
+                              )
+                          ),
+
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text("Year")
+                                  ]
+                              )
+                          ),
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text(book.year)
+                                  ]
+                              )
+                          ),
+
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text("Genre")
+                                  ]
+                              )
+                          ),
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text(book.genre)
+                                  ]
+                              )
+                          ),
+
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text("ISBN")
+                                  ]
+                              )
+                          ),
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text(book.isbn)
+                                  ]
+                              )
+                          ),
+
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text("Latitude")
+                                  ]
+                              )
+                          ),
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text(book.lat)
+                                  ]
+                              )
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text("Longitude")
+                                  ]
+                              )
+                          ),
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text(book.lon)
+                                  ]
+                              )
+                          ),
+                        ],
+                      ),
+                    ],
+                  )
+              ),
+            ),
+            actions:[
+              FlatButton(
+                child: Text("Propose"),
+                onPressed: (){
+                  Navigator.of(context).pop();
+                  proposeExchangeDialog(book);
+                },
+              ),
+              FlatButton(
+                child: Text("Cancel"),
+                onPressed: (){
+                  Navigator.of(context).pop();
+                },
+              )
+            ],
+          );
+        }
+    );
+  }
+
+  viewTransactionDialog(Transaction transaction){
+
+    print(transaction.state);
+    print(transaction.uidproposer);
+    print(transaction.uidreciever);
+    print(transaction.bookproposer);
+    print(transaction.bookreciever);
 
     return showDialog(
         context: context,
         builder: (BuildContext context){
-          return StatefulBuilder(
-            builder: (context, setState) {
-              return AlertDialog(
-                title: Text("Propose Exchange"),
-                content:
-                Container(
-                  color: Colors.white,
-                  child: new Center(
-                      child: new Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                          Text("You are proposing an exchange for:"),
-                          Text(target.title),
-                          Text("Select one book you want to exchange:"),
-                          DropdownButton(
-                              value: currentBook,
-                              items: dropdownItems,
-                              onChanged: (String selected){
-                                setState((){
-                                  currentBook = selected;
-                                });
-                              }
+          return AlertDialog(
+            title: Text("Book Exchange Riepilog"),
+            content: Container(
+              child: new Center(
+                  child: new Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Row(
+                        children: [
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text("Transaction ID")
+                                  ]
+                              )
+                          ),
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text(transaction.id)
+                                  ]
+                              )
                           ),
                         ],
-                      )
-                  ),
-                ),
-                actions:[
-                  FlatButton(
-                    child: Text("Propose"),
-                    onPressed: (){
-                      print("propose done");
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                  FlatButton(
-                    child: Text("Cancel"),
-                    onPressed: (){
-                      Navigator.of(context).pop();
-                    },
+                      ),
+                      Row(
+                        children: [
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text("Transaction State")
+                                  ]
+                              )
+                          ),
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text(transaction.state)
+                                  ]
+                              )
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text("Proposer User ID")
+                                  ]
+                              )
+                          ),
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text(transaction.uidproposer)
+                                  ]
+                              )
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text("Proposer Book ID")
+                                  ]
+                              )
+                          ),
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text(transaction.bookproposer)
+                                  ]
+                              )
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text("Receiver User ID")
+                                  ]
+                              )
+                          ),
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text(transaction.uidreciever)
+                                  ]
+                              )
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text("Receiver Book ID")
+                                  ]
+                              )
+                          ),
+                          Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text(transaction.bookreciever)
+                                  ]
+                              )
+                          ),
+                        ],
+                      ),
+                    ],
                   )
-                ],
-              );
-            },
+              ),
+            ),
+            actions:[
+              FlatButton(
+                child: Text("Accept"),
+                onPressed: (){
+                  handleTransaction(transaction.id, "accept");
+                  notifyDialog("Result", "Transaction accepted");
+                },
+              ),
+              FlatButton(
+                child: Text("Deny"),
+                onPressed: (){
+                  handleTransaction(transaction.id, "deny");
+                  notifyDialog("Result", "Transaction denied");
+                },
+              ),
+              FlatButton(
+                child: Text("Back"),
+                onPressed: (){
+                  Navigator.of(context).pop();
+                },
+              )
+            ],
           );
-
-
         }
     );
   }
@@ -672,11 +1142,46 @@ class _BookKingState extends State<BookKing> with TickerProviderStateMixin {
     return retList;
   }
 
-  Widget updateTabContent(List<Book> list){
-    return _buildContent(list);
+  List<Transaction> getTransactionFromString(String content){
+    String modContent = content.replaceAll("\'", "\"");
+
+    // store json data into list
+    var list = convert.jsonDecode(modContent) as List;
+
+    // iterate over the list and map each object in list to Img by calling Book.fromJson
+    List<Transaction> retList = list.map((i) => Transaction.fromJson(i)).toList();
+
+    return retList;
   }
 
-  Widget _buildContent(List<Book> retList) {
+  Widget updateTabContent(List<Book> list){
+    return _buildTabContent(list);
+  }
+
+  Widget updateTransactionTabContent(List<Transaction> list){
+    return _buildTransactionContent(list);
+  }
+
+  Widget _buildTabContent(List<Book> retList) {
+    return Container(
+        height: 530,
+        child: ListView.separated(
+          itemCount: retList.length,
+          padding: EdgeInsets.all( 16.0 ),
+          separatorBuilder: (BuildContext context, int index) {
+            return Divider(
+              color: Colors.grey,
+              thickness: 1,
+            );
+          },
+          itemBuilder: (BuildContext context, int index) {
+            return _buildRow(retList[index]);
+          },
+        )
+    );
+  }
+
+  Widget _buildTransactionContent(List<Transaction> retList) {
     return Container(
         height: 530,
         child: ListView.separated(
@@ -689,7 +1194,7 @@ class _BookKingState extends State<BookKing> with TickerProviderStateMixin {
               );
             },
           itemBuilder: (BuildContext context, int index) {
-            return _buildRow(retList[index]);
+            return _buildTransactionRow(retList[index]);
           },
         )
     );
@@ -697,35 +1202,55 @@ class _BookKingState extends State<BookKing> with TickerProviderStateMixin {
 
   Widget _buildRow(Book book) {
 
-    if (_searchFilter != ""){
-      if (!book.title.contains(_searchFilter)){
-        return null;
-      }
-      else{
-        return ListTile(
-            title: Text(
-              book.title,
-            ),
-            trailing: Icon(
-                Icons.favorite_border,
-                color : Colors.black54
-            ),
-            onTap: () {
-
-            }
-        );
-      }
-    }
     return ListTile(
         title: Text(
-          book.title,
+          book.title.toString(),
         ),
         trailing: Icon(
-            Icons.favorite_border,
+            Icons.book,
             color : Colors.black54
         ),
-        onTap: () {
+        onTap: (){
+          viewBookDialog(book);
+        }
+    );
 
+  }
+
+  Widget _buildTransactionRow(Transaction transaction) {
+
+    var acceptedColor = Colors.green;
+    var pendingColor = Colors.black54;
+    var deniedColor = Colors.red;
+
+    var acceptedIcon = Icons.check;
+    var pendingIcon = Icons.donut_large;
+    var deniedIcon = Icons.clear;
+
+    var _color;
+    var _icon;
+
+    if (transaction.state == 'accpted'){
+      _color = acceptedColor;
+      _icon = acceptedIcon;
+    } else if (transaction.state == 'pending'){
+      _color = pendingColor;
+      _icon = pendingIcon;
+    } else {
+      _color = deniedColor;
+      _icon = deniedIcon;
+    }
+
+    return ListTile(
+        title: Text(
+          transaction.id,
+        ),
+        trailing: Icon(
+           _icon,
+            color : _color
+        ),
+        onTap: (){
+          viewTransactionDialog(transaction);
         }
     );
 
@@ -750,13 +1275,8 @@ class _BookKingState extends State<BookKing> with TickerProviderStateMixin {
     } else {
       print('[DEBUG] doLogin - Request failed with status: ${response
           .statusCode}.');
-      return "ERROR TOKEN";
+      return "ERROR";
     }
-  }
-
-  Future<String> getGoogleToken(User currentUser) async{
-    Future<String> token = currentUser.getIdToken();
-    return token;
   }
 
   Future<String> createBook(String author, String  title, String  year, String genre, String isbn) async {
@@ -768,8 +1288,8 @@ class _BookKingState extends State<BookKing> with TickerProviderStateMixin {
     var i = isbn;
 
     Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-    var lat = position.latitude;
-    var lon = position.longitude;
+    var lat = position.latitude.toString();
+    var lon = position.longitude.toString();
 
     var response = await http.post(
         'http://bookking.pythonanywhere.com/books/create',
@@ -784,6 +1304,25 @@ class _BookKingState extends State<BookKing> with TickerProviderStateMixin {
           'lat': lat,
           'lon': lon,
           'ISBN': i
+        });
+
+    print(response.body);
+    return (response.statusCode.toString());
+  }
+
+  Future<String> getGoogleToken(User currentUser) async{
+    Future<String> token = currentUser.getIdToken();
+    return token;
+  }
+
+  Future<String> doSignUp(String email, String password) async {
+
+    var response = await http.post(
+        'http://bookking.pythonanywhere.com/signup',
+        headers: <String, String>{},
+        body: {
+          'email': email,
+          'password': password
         });
 
     return (response.statusCode.toString());
@@ -860,7 +1399,7 @@ class _BookKingState extends State<BookKing> with TickerProviderStateMixin {
       return jsonResponse;
 
     } else {
-      return "REQUEST ERROR";
+      return "ERROR";
     }
 
   }
@@ -879,8 +1418,39 @@ class _BookKingState extends State<BookKing> with TickerProviderStateMixin {
       return jsonResponse;
 
     } else {
-      return "REQUEST ERROR";
+      return "ERROR";
     }
 
   }
+
+  Future<String> proposeBook(Book target, Book mine) async {
+
+    var response = await http.post(
+        'http://bookking.pythonanywhere.com/transactions/propose',
+        headers: <String, String>{
+          'Authorization': _loggedUser.getToken()
+        },
+        body: {
+          'bookproposer': mine.id,
+          'bookreciever': target.id,
+        });
+    return (response.statusCode.toString());
+  }
+
+  Future<String> handleTransaction(String id, String action) async {
+
+    var response = await http.post(
+        'http://bookking.pythonanywhere.com/transactions/accept',
+        headers: <String, String>{
+          'Authorization': _loggedUser.getToken()
+        },
+        body: {
+          'transactionid': id,
+          'action': action
+        });
+
+    print(response.body);
+    return (response.statusCode.toString());
+  }
+
 }
