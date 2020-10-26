@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
 
+import 'package:http/http.dart' as http;
+import 'dart:convert' as convert;
+
+import 'main.dart';
+
 class MyForm extends StatefulWidget {
+
+  final _MyFormState state = _MyFormState();
+
   @override
-  _MyFormState createState() => _MyFormState();
+  _MyFormState createState() => state;
 }
 
 class _MyFormState extends State<MyForm> {
@@ -12,6 +20,14 @@ class _MyFormState extends State<MyForm> {
 
   final _loginForm = GlobalKey<FormState>();
   bool _obscureText = true;
+
+  String getFormEmail(){
+    return _usernameFieldController.value.text;
+  }
+
+  String getFormPassword(){
+    return _passwordFieldController.value.text;
+  }
 
   @override
   void initState() {
@@ -93,9 +109,10 @@ class _MyFormState extends State<MyForm> {
                     ),
                   )
               ),
-              Padding( padding: EdgeInsets.symmetric(vertical: 12.0) ),
+              Padding( padding: EdgeInsets.symmetric(vertical: 12.0) )
             ]
         )
     );
   }
+
 }
