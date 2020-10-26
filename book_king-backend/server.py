@@ -98,6 +98,7 @@ def books():
 	lon = request.args.get('lon', default = '', type = str)
 	order = request.args.get('order', default = '', type = str)
 
+
 	books = db.collection(u'books').stream()
 
 	result = []
@@ -110,7 +111,7 @@ def books():
 		else:
 			book['distance'] = 9999999
 
-		if book['title'].startswith(title) and book['author'].startswith(author) and book['genere'].startswith(genere):
+		if book['title'].lower().startswith(title.lower()) and book['author'].lower().startswith(author.lower()) and book['genere'].lower().startswith(genere.lower()):
 			result.append(book)
 
 	if lat != '' and lon != '':
@@ -204,9 +205,10 @@ def mybooks():
 
 	result = []
 	for b in books:
-		b = b.to_dict()
-		if b['userid'] == uid:
-			result.append(b)
+		book = b.to_dict()
+		book['id'] = b.id
+		if book['userid'] == uid:
+			result.append(book)
 
 	return str(result)
 
@@ -221,6 +223,7 @@ def transactions():
 	result = []
 	for tr in transactions:
 		t = tr.to_dict()
+		t['id'] = tr.id
 		if uid == t['uidreciever'] or uid == t['uidproposer']:
 			result.append(t)
 
@@ -263,8 +266,13 @@ def accept():
 
 	data = request.form
 	transactionid = data['transactionid']
+	action = data['action']
 
-	db.collection(u'transactions').document(transactionid).update({u'state': 'accpted'})
+	if action == 'accept':
+	    db.collection(u'transactions').document(transactionid).update({u'state': 'accpted'})
+	    return '200'
+
+	db.collection(u'transactions').document(transactionid).update({u'state': 'refused'})
 	return '200'
 
 
