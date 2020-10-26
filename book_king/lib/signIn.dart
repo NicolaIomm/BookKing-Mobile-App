@@ -25,10 +25,9 @@ Future<User> signInGoogle() async {
 
     final User currentUser = _auth.currentUser;
     assert(user.uid == currentUser.uid);
-
     print('[DEBUG] SignInGoogle - signInWithGoogle succeeded: $user');
 
-    return user;
+    return currentUser;
   }
 
   return null;

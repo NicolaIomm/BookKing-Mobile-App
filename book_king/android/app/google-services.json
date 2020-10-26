@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "294108280538",
-    "firebase_url": "https://bookking-app.firebaseio.com",
-    "project_id": "bookking-app",
-    "storage_bucket": "bookking-app.appspot.com"
+    "project_number": "587015631564",
+    "firebase_url": "https://bookking2-291719.firebaseio.com",
+    "project_id": "bookking2-291719",
+    "storage_bucket": "bookking2-291719.appspot.com"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:294108280538:android:72559409cc409b84b157e3",
+        "mobilesdk_app_id": "1:587015631564:android:b598f5cd10eee85d424869",
         "android_client_info": {
           "package_name": "com.project.book_king"
         }
       },
       "oauth_client": [
         {
-          "client_id": "294108280538-8ptisq2bckc0k7b6mi3vq0g4qmps0d8a.apps.googleusercontent.com",
+          "client_id": "587015631564-sdutgi3rop8mve0ivl7mfka1cnrhb030.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.project.book_king",
@@ -23,20 +23,20 @@
           }
         },
         {
-          "client_id": "294108280538-m5psnondpl54i9qto4gtqebe0con1bfb.apps.googleusercontent.com",
+          "client_id": "587015631564-nfkoq9hrs8r5hmsukk8n90pr0dcoeabi.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyDWUE68JG2sMNwhIDISGtp75P3X-Topdes"
+          "current_key": "AIzaSyCjhngeukDATKyHfj9bjysDCX0xZBpQorw"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "294108280538-m5psnondpl54i9qto4gtqebe0con1bfb.apps.googleusercontent.com",
+              "client_id": "587015631564-nfkoq9hrs8r5hmsukk8n90pr0dcoeabi.apps.googleusercontent.com",
               "client_type": 3
             }
           ]
